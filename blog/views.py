@@ -3,8 +3,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.generic import ListView
 from django.core.mail import send_mail
 
-from .forms import EmailPostForm
-from .models import Post
+from .forms import EmailPostForm, CommentForm
+from .models import Post, Comment
 
 # Create your views here.
 
@@ -39,7 +39,30 @@ def post_detail(request, year, month, day, posti):
                                     publish__year=year,
                                     publish__month=month,
                                     publish__day=day)
-    return render(request,'blog/post/detail.html',{'post': post})
+    # Lista de comentarios activos para este post
+    comments = post.comments.filter(active=True)
+
+    new_comment = None
+
+    if request.method == 'POST':
+        # un comentario ha sido posteado
+        comment_form = CommentForm(data=request.POST)
+        if comment_form.is_valid():
+            # crea un objeto comentario pero no lo guarda en la base de datos aun
+            new_comment = comment_form.save(commit=False)
+            #Asigna el post actual al comentario
+            new_comment.post = post
+            # Guarda el comentario en la bas de datos
+            new_comment.save()
+    else:
+        comment_form = CommentForm()
+
+    return render(request,'blog/post/detail.html',{
+        'post': post,
+        'comments': comments,
+        'new_comment': new_comment,
+        'comment_form': comment_form
+        })
 
 
 def post_share(request, post_id):
